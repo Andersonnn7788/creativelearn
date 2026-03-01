@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
-import MascotAvatar from './MascotAvatar';
+import { Canvas } from '@react-three/fiber';
+import SymbioteBlob from './SymbioteBlob';
 import { getSystemMessage } from '../utils/mascot';
 import { getElementExplanation } from '../utils/gemini';
 import { TrackingData, ElementData } from '../types';
@@ -9,9 +10,11 @@ interface MascotGuideProps {
   isDashboardOpen: boolean;
   trackingData: React.MutableRefObject<TrackingData>;
   combinedElement: ElementData | null; // New element that was just created
+  speak?: (text: string) => Promise<void>;
+  audioLevelRef?: React.MutableRefObject<number>;
 }
 
-const MascotGuide: React.FC<MascotGuideProps> = ({ message, isDashboardOpen, trackingData, combinedElement }) => {
+const MascotGuide: React.FC<MascotGuideProps> = ({ message, isDashboardOpen, trackingData, combinedElement, speak, audioLevelRef }) => {
   const [mascotText, setMascotText] = useState("Welcome to the Lab! I'm Atom.");
   const [isVisible, setIsVisible] = useState(true);
   
@@ -108,9 +111,13 @@ const MascotGuide: React.FC<MascotGuideProps> = ({ message, isDashboardOpen, tra
     if (geminiExplanation) {
       setMascotText(geminiExplanation);
       lastUpdateRef.current = Date.now();
+      // Speak the explanation aloud via TTS
+      if (speak) {
+        speak(geminiExplanation);
+      }
       return; // Don't show system message when Gemini explanation is active
     }
-  }, [geminiExplanation]);
+  }, [geminiExplanation, speak]);
 
   // Sync system message to mascot speech with smart timing
   // BUT: Don't show system message if we have an active Gemini explanation
@@ -177,20 +184,27 @@ const MascotGuide: React.FC<MascotGuideProps> = ({ message, isDashboardOpen, tra
   return (
     <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end pointer-events-none overflow-visible ">
        {/* Speech Bubble */}
-       <div className="mb-2 max-w-xs bg-white/10 backdrop-blur-md border border-cyan-500/30 p-4 rounded-t-2xl rounded-bl-2xl rounded-br-none text-right shadow-[0_0_20px_rgba(34,211,238,0.2)] animate-bounce-slight origin-bottom-right transform transition-all">
-          <p className="text-cyan-100 font-mono text-sm leading-relaxed">
+       <div className="mb-2 max-w-xs bg-white/10 backdrop-blur-md border border-purple-500/30 p-4 rounded-t-2xl rounded-bl-2xl rounded-br-none text-right shadow-[0_0_20px_rgba(168,85,247,0.2)] animate-bounce-slight origin-bottom-right transform transition-all">
+          <p className="text-purple-100 font-mono text-sm leading-relaxed">
             {mascotText}
           </p>
        </div>
 
-       {/* 3D Avatar Container */}
+       {/* 3D Blob Container */}
        <div className="w-40 h-40 relative group pointer-events-auto overflow-visible">
           {/* Glow Effect */}
-          <div className="absolute inset-0 bg-cyan-500/20 rounded-full blur-3xl group-hover:bg-cyan-500/40 transition-all duration-500"></div>
-          
+          <div className="absolute inset-0 bg-purple-500/20 rounded-full blur-3xl group-hover:bg-purple-500/40 transition-all duration-500"></div>
+
           {/* Container */}
           <div className="w-full h-full relative z-10 pointer-events-auto">
-             <MascotAvatar trackingData={trackingData} />
+             <Canvas camera={{ position: [0, 0, 3], fov: 50 }} gl={{ alpha: true }}>
+               <ambientLight intensity={0.15} />
+               <pointLight position={[3, 4, 3]} intensity={2.0} color="#ffffff" />
+               <pointLight position={[-3, -2, 4]} intensity={0.6} color="#6600aa" />
+               <group scale={0.7}>
+                 <SymbioteBlob trackingRef={trackingData} audioLevelRef={audioLevelRef} />
+               </group>
+             </Canvas>
           </div>
        </div>
 

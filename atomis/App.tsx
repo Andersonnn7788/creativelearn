@@ -5,12 +5,14 @@ import HandTracker from './components/HandTracker';
 import UIOverlay from './components/UIOverlay';
 import Dashboard from './components/Dashboard';
 import MascotGuide from './components/MascotGuide';
+import { useVoice } from './hooks/useVoice';
 import { ELEMENTS, COMBINATIONS } from './constants';
 import { TrackingData, ElementData, CatalystType, GameState } from './types';
 import successChime from './assets/sounds/success-chime.mp3';
 import softError from './assets/sounds/soft-error.mp3';
 
 const App: React.FC = () => {
+  const { speak, audioLevelRef } = useVoice();
   const [isCameraReady, setIsCameraReady] = useState(false);
   const [isDashboardOpen, setIsDashboardOpen] = useState(false);
   
@@ -658,11 +660,13 @@ const App: React.FC = () => {
                labSlots={labSlots}
                onStartQuiz={startQuiz}
             />
-            <MascotGuide 
+            <MascotGuide
                message={message}
                isDashboardOpen={isDashboardOpen}
                trackingData={trackingDataRef}
                combinedElement={combinedElement}
+               speak={speak}
+               audioLevelRef={audioLevelRef}
             />
         </>
       )}

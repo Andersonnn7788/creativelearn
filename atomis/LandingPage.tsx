@@ -1,8 +1,10 @@
-import React, { useRef, useMemo, useState, useEffect } from "react";
+import React, { useRef, useMemo, useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { Canvas, useFrame } from "@react-three/fiber";
 import * as THREE from "three";
-import WaterSimulation from "./components/WaterSimulation";
+import SymbioteBlob from "./components/SymbioteBlob";
+import { useVoice } from "./hooks/useVoice";
+import { useConversation } from "./hooks/useConversation";
 import { TrackingData } from "./types";
 
 // Fullscreen Nebula Background Shader
@@ -166,7 +168,7 @@ const StarField: React.FC = () => {
         col[i * 3 + 2] = 1.0;
       }
 
-      sz[i] = Math.random() * 1.5 + 0.5;
+      sz[i] = Math.random() * 4.5 + 1.5;
     }
 
     return { positions: pos, colors: col, sizes: sz };
@@ -186,7 +188,7 @@ const StarField: React.FC = () => {
       vColor = color;
       vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
       gl_Position = projectionMatrix * mvPosition;
-      gl_PointSize = aSize * (200.0 / -mvPosition.z);
+      gl_PointSize = aSize * (300.0 / -mvPosition.z);
     }
   `;
 
@@ -249,69 +251,86 @@ const StarryBackground: React.FC = () => {
 // Main Landing Page Component
 const LandingPage: React.FC = () => {
   const navigate = useNavigate();
-  const [isLoaded, setIsLoaded] = useState(false);
+  const [isLoaded, setIsLoaded] = useState(true);
+  const { speak, audioLevelRef, isSpeakingRef } = useVoice();
+  const handleNavigationIntent = useCallback(() => navigate("/play"), [navigate]);
+  const { status, lastReply, startListening, stopListening } = useConversation(speak, isSpeakingRef, handleNavigationIntent);
+  const hasSpokenRef = useRef(false);
 
-  // Mock tracking data for landing page (no hand tracking)
-  const mockTrackingRef = useRef<TrackingData>({
+  // Greet on first user interaction (browser autoplay policy requires a gesture)
+  useEffect(() => {
+    const greetOnInteraction = async () => {
+      if (hasSpokenRef.current) return;
+      hasSpokenRef.current = true;
+      await speak("Welcome to Atomis. I'm Venom, your chemistry lab assistant. Ready to start experimenting?");
+      // Wait for TTS playback to finish, then auto-open mic
+      await new Promise<void>((resolve) => {
+        const check = () => {
+          if (!isSpeakingRef.current) resolve();
+          else requestAnimationFrame(check);
+        };
+        setTimeout(check, 100);
+      });
+      startListening();
+    };
+
+    document.addEventListener('pointerdown', greetOnInteraction, { once: true });
+    return () => document.removeEventListener('pointerdown', greetOnInteraction);
+  }, [speak, isSpeakingRef, startListening]);
+
+  const handleMicClick = () => {
+    if (status === 'listening') {
+      stopListening();
+    } else if (status === 'idle' || status === 'speaking') {
+      startListening();
+    }
+  };
+
+  // Display text: never show the user's transcript (voice-to-voice feel)
+  const displayText =
+    status === 'listening'
+      ? 'Listening...'
+      : status === 'thinking'
+      ? 'Thinking...'
+      : lastReply || "Ask me anything about chemistry!";
+
+  // Tracking data for hand interactions
+  const trackingRef = useRef<TrackingData>({
     left: {
       pinchDistance: 0.3,
       isPinching: false,
       isPointing: false,
       position: { x: 0.3, y: 0.5, z: 0 },
+      indexPosition: { x: 0.3, y: 0.5, z: 0 },
+      isPresent: false
     },
     right: {
       pinchDistance: 0.3,
       isPinching: false,
       isPointing: false,
       position: { x: 0.7, y: 0.5, z: 0 },
+      indexPosition: { x: 0.7, y: 0.5, z: 0 },
+      isPresent: false
     },
     isClapping: false,
     isResetGesture: false,
     isClosedFist: false,
+    isSixtySevenGesture: false,
     handDistance: 0.4,
     cameraAspect: 1.77,
   });
 
-  useEffect(() => {
-    setIsLoaded(true);
-    // Animate mock hands for visual effect
-    const interval = setInterval(() => {
-      const time = Date.now() * 0.001;
-      mockTrackingRef.current.left.position.x = 0.3 + Math.sin(time) * 0.1;
-      mockTrackingRef.current.left.position.y =
-        0.5 + Math.cos(time * 0.7) * 0.1;
-      mockTrackingRef.current.right.position.x =
-        0.7 + Math.sin(time + Math.PI) * 0.1;
-      mockTrackingRef.current.right.position.y =
-        0.5 + Math.cos(time * 0.7 + Math.PI) * 0.1;
-      mockTrackingRef.current.left.pinchDistance =
-        0.3 + Math.sin(time * 2) * 0.1;
-      mockTrackingRef.current.right.pinchDistance =
-        0.3 + Math.sin(time * 2 + Math.PI) * 0.1;
-    }, 16); // ~60fps
-
-    return () => clearInterval(interval);
-  }, []);
-
-  const handleGetStarted = () => {
-    navigate("/play");
-  };
-
-  const handleClose = () => {
-    navigate("/play");
-  };
-
   return (
     <div className="relative w-full h-screen bg-black text-white overflow-hidden">
       {/* Starry Background */}
-      <div className="absolute inset-0 z-0">
+      <div className="absolute inset-0 z-0 pointer-events-none">
         <StarryBackground />
       </div>
 
       {/* Main Content */}
-      <div className="relative z-10 flex flex-col h-full">
+      <div className="relative z-10 flex items-center justify-center h-full">
         {/* Central Card */}
-        <div className="flex-1 flex items-center justify-center px-6 md:px-12 py-12">
+        <div className="flex items-center justify-center px-6 md:px-12">
           <div
             className={`relative w-full max-w-md transition-all duration-1000 ${
               isLoaded
@@ -333,28 +352,28 @@ const LandingPage: React.FC = () => {
               ></div>
 
               {/* Water Simulation */}
-              <div className="relative h-48 mb-8 flex items-center justify-center">
+              <div className="relative h-48 mb-4 md:mb-8 flex items-center justify-center">
                 <div className="absolute inset-0 flex items-center justify-center">
                   <div className="w-48 h-48 md:w-64 md:h-64">
                     <Canvas camera={{ position: [0, 0, 3], fov: 50 }}>
-                      <ambientLight intensity={0.5} />
+                      <ambientLight intensity={0.15} />
                       <pointLight
-                        position={[2, 2, 2]}
-                        intensity={1}
-                        color="#00BFFF"
+                        position={[3, 4, 3]}
+                        intensity={2.0}
+                        color="#ffffff"
                       />
                       <pointLight
-                        position={[-2, -2, 2]}
-                        intensity={0.8}
-                        color="#8B5CF6"
-                      />
-                      <pointLight
-                        position={[0, 2, -2]}
+                        position={[-3, -2, 4]}
                         intensity={0.6}
-                        color="#00FFFF"
+                        color="#6600aa"
+                      />
+                      <pointLight
+                        position={[0, -4, 2]}
+                        intensity={0.4}
+                        color="#220044"
                       />
                       <group scale={0.7}>
-                        <WaterSimulation trackingRef={mockTrackingRef} />
+                        <SymbioteBlob trackingRef={trackingRef} audioLevelRef={audioLevelRef} />
                       </group>
                     </Canvas>
                   </div>
@@ -365,89 +384,56 @@ const LandingPage: React.FC = () => {
               <div className="relative z-10 mb-4">
                 <div className="inline-block px-6 py-3 bg-gray-800/80 rounded-full border border-gray-600/50">
                   <span className="font-['Roboto_Mono'] text-white text-lg md:text-xl">
-                    :: H₂O
+                    Venom
                   </span>
                 </div>
               </div>
 
               {/* Inviter Info */}
-              <div className="relative z-10">
+              <div className="relative z-10 mb-4">
                 <p className="text-sm text-gray-400 font-['Roboto_Mono']">
-                  Hands On Chemistry Lab
+                  Your Chemistry Lab Assistant
                 </p>
+              </div>
+
+              {/* Speech Bubble */}
+              <div className="relative z-10 mb-4 min-h-[3rem] max-h-28 overflow-y-auto bg-white/5 backdrop-blur-sm rounded-xl px-4 py-3 border border-purple-500/20">
+                <p className={`text-sm font-['Roboto_Mono'] leading-relaxed ${
+                  status === 'listening' ? 'text-cyan-300' : status === 'thinking' ? 'text-purple-300 animate-pulse' : 'text-gray-200'
+                }`}>
+                  {displayText}
+                </p>
+              </div>
+
+              {/* Mic Button */}
+              <div className="relative z-10 flex justify-center">
+                <button
+                  onClick={handleMicClick}
+                  disabled={status === 'thinking'}
+                  className={`w-14 h-14 rounded-full flex items-center justify-center transition-all duration-300 border-2 ${
+                    status === 'listening'
+                      ? 'bg-red-500/30 border-red-400 shadow-[0_0_20px_rgba(239,68,68,0.4)] scale-110'
+                      : status === 'thinking'
+                      ? 'bg-purple-500/20 border-purple-500/40 cursor-wait'
+                      : 'bg-white/5 border-gray-600/50 hover:border-purple-400/60 hover:bg-purple-500/10 hover:scale-105'
+                  }`}
+                >
+                  {status === 'thinking' ? (
+                    <svg className="w-6 h-6 text-purple-300 animate-spin" viewBox="0 0 24 24" fill="none">
+                      <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" strokeDasharray="31.4 31.4" strokeLinecap="round" />
+                    </svg>
+                  ) : (
+                    <svg className={`w-6 h-6 ${status === 'listening' ? 'text-red-300' : 'text-gray-300'}`} viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z" />
+                      <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z" />
+                    </svg>
+                  )}
+                </button>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Footer */}
-        <footer className="w-full px-6 md:px-12 pb-6">
-          <div className="space-y-6">
-            {/* Top Footer Section */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
-              {/* Left */}
-              <div className="flex items-center gap-3 justify-start md:justify-start">
-                <span className="text-2xl md:text-3xl font-['Orbitron'] font-bold">
-                  1x
-                </span>
-                <span className="text-sm md:text-base font-['Roboto_Mono'] text-gray-300">
-                  Element to combine
-                </span>
-              </div>
-
-              {/* Center - CTA Button */}
-              <div className="flex justify-center">
-                <button
-                  onClick={handleGetStarted}
-                  className="px-8 py-4 bg-transparent border-2 border-white/20 hover:border-white/40 rounded-lg font-['Orbitron'] text-lg md:text-xl font-medium transition-all duration-300 hover:scale-105 whitespace-nowrap"
-                  style={{
-                    fontFamily: "Orbitron, sans-serif",
-                    letterSpacing: "0.05em",
-                  }}
-                >
-                  Start Experimenting →
-                </button>
-              </div>
-
-              {/* Right */}
-              <div className="text-right text-sm font-['Roboto_Mono'] text-gray-400 max-w-sm md:ml-auto">
-                <p>Start experimenting with your own elements</p>
-                <p>and create new compounds.</p>
-              </div>
-            </div>
-
-            {/* Bottom Bar */}
-            <div className="w-full bg-gray-900/60 backdrop-blur-md border-t border-gray-700/50 px-6 md:px-12 py-4 rounded-t-lg">
-              <div className="flex justify-between items-center">
-                {/* Left: Logo */}
-                <div className="flex items-center gap-3">
-                  <div className="grid grid-cols-3 gap-1 w-6 h-6">
-                    {[...Array(9)].map((_, i) => (
-                      <div
-                        key={i}
-                        className="w-1.5 h-1.5 bg-white rounded-sm"
-                      ></div>
-                    ))}
-                  </div>
-                  <span className="font-['Orbitron'] font-bold text-lg">
-                    Atomis
-                  </span>
-                </div>
-
-                {/* Right: Attribution */}
-                <div className="flex items-center gap-2 text-sm font-['Roboto_Mono'] text-gray-400">
-                  <span>curated by</span>
-                  <div className="flex items-center gap-1">
-                    <span className="font-['Orbitron'] font-bold text-white">
-                      M
-                    </span>
-                    <span className="text-white">Atomis</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </footer>
       </div>
     </div>
   );

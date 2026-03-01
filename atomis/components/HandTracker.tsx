@@ -11,6 +11,7 @@ interface HandTrackerProps {
 
 const HandTracker: React.FC<HandTrackerProps> = ({ onUpdate, onCameraReady }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
   const [error, setError] = useState<string | null>(null);
   const onUpdateRef = useRef(onUpdate);
   
@@ -74,6 +75,7 @@ const HandTracker: React.FC<HandTrackerProps> = ({ onUpdate, onCameraReady }) =>
             return;
         }
 
+        streamRef.current = stream;
         videoRef.current.srcObject = stream;
         videoRef.current.onloadeddata = () => {
           if (isMounted) {
@@ -215,8 +217,9 @@ const HandTracker: React.FC<HandTrackerProps> = ({ onUpdate, onCameraReady }) =>
     return () => {
       isMounted = false;
       cancelAnimationFrame(animationFrameId);
-      if (videoRef.current && videoRef.current.srcObject) {
-        (videoRef.current.srcObject as MediaStream).getTracks().forEach(track => track.stop());
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+        streamRef.current = null;
       }
       handLandmarker?.close();
     };
