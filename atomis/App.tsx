@@ -5,30 +5,30 @@ import HandTracker from './components/HandTracker';
 import UIOverlay from './components/UIOverlay';
 import Dashboard from './components/Dashboard';
 import MascotGuide from './components/MascotGuide';
-import { useVoice } from './hooks/useVoice';
+import { useLabConversation } from './hooks/useLabConversation';
 import { ELEMENTS, COMBINATIONS } from './constants';
 import { TrackingData, ElementData, CatalystType, GameState } from './types';
+import { LabContext } from './utils/labPrompt';
 import successChime from './assets/sounds/success-chime.mp3';
 import softError from './assets/sounds/soft-error.mp3';
 
 const App: React.FC = () => {
-  const { speak, audioLevelRef } = useVoice();
   const [isCameraReady, setIsCameraReady] = useState(false);
   const [isDashboardOpen, setIsDashboardOpen] = useState(false);
-  
+
   const [leftElement, setLeftElement] = useState<ElementData>(ELEMENTS[0]);
-  const [rightElement, setRightElement] = useState<ElementData>(ELEMENTS[3]); 
-  
+  const [rightElement, setRightElement] = useState<ElementData>(ELEMENTS[3]);
+
   const [combinedElement, setCombinedElement] = useState<ElementData | null>(null);
   const [message, setMessage] = useState("LAB READY");
   const [activeCatalyst, setActiveCatalyst] = useState<CatalystType>('none');
   const [savedElements, setSavedElements] = useState<ElementData[]>([]);
-  
+
   const [gameState, setGameState] = useState<GameState>('playing');
   const [deathReason, setDeathReason] = useState<string>('');
   const [showSixtySeven, setShowSixtySeven] = useState(false);
   const sixtySevenGestureProcessedRef = useRef(false);
-  
+
   // Quiz Mode State
   const [quizMode, setQuizMode] = useState<{
     active: boolean;
@@ -36,6 +36,12 @@ const App: React.FC = () => {
     targetSymbol: string | null;
     targetName: string | null;
   }>({ active: false, difficulty: null, targetSymbol: null, targetName: null });
+
+  // Lab context for the AI mentor
+  const labState: LabContext = {
+    leftElement, rightElement, activeCatalyst, combinedElement, message, savedElements, gameState, quizMode,
+  };
+  const { speak, audioLevelRef, conversationStatus, lastReply } = useLabConversation(labState, isCameraReady);
 
   // Fallback to prevent infinite loading if camera fails to init
   useEffect(() => {
@@ -53,6 +59,11 @@ const App: React.FC = () => {
 
   // Load saved history and lab slots on mount
   useEffect(() => {
+    // Clear all experiment data on every page load for a fresh start
+    localStorage.removeItem('chemLabHistory');
+    localStorage.removeItem('labSlots');
+    localStorage.removeItem('labCreatedSlots');
+
     const history = JSON.parse(localStorage.getItem('chemLabHistory') || '[]');
     setSavedElements(history);
     
@@ -667,6 +678,8 @@ const App: React.FC = () => {
                combinedElement={combinedElement}
                speak={speak}
                audioLevelRef={audioLevelRef}
+               conversationStatus={conversationStatus}
+               lastReply={lastReply}
             />
         </>
       )}

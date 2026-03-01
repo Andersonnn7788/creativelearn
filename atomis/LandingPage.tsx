@@ -254,7 +254,7 @@ const LandingPage: React.FC = () => {
   const [isLoaded, setIsLoaded] = useState(true);
   const { speak, audioLevelRef, isSpeakingRef } = useVoice();
   const handleNavigationIntent = useCallback(() => navigate("/play"), [navigate]);
-  const { status, lastReply, startListening, stopListening } = useConversation(speak, isSpeakingRef, handleNavigationIntent);
+  const { status, lastReply, startListening, stopListening } = useConversation(speak, isSpeakingRef, { onNavigationIntent: handleNavigationIntent });
   const hasSpokenRef = useRef(false);
 
   // Greet on first user interaction (browser autoplay policy requires a gesture)
@@ -262,15 +262,21 @@ const LandingPage: React.FC = () => {
     const greetOnInteraction = async () => {
       if (hasSpokenRef.current) return;
       hasSpokenRef.current = true;
-      await speak("Welcome to Atomis. I'm Venom, your chemistry lab assistant. Ready to start experimenting?");
-      // Wait for TTS playback to finish, then auto-open mic
-      await new Promise<void>((resolve) => {
-        const check = () => {
-          if (!isSpeakingRef.current) resolve();
-          else requestAnimationFrame(check);
-        };
-        setTimeout(check, 100);
-      });
+      const didSpeak = await speak("Welcome to Atomis. I'm Venom, your chemistry lab assistant. Ready to start experimenting?");
+
+      if (didSpeak) {
+        // Wait for TTS playback to finish, then auto-open mic
+        await new Promise<void>((resolve) => {
+          const check = () => {
+            if (!isSpeakingRef.current) resolve();
+            else requestAnimationFrame(check);
+          };
+          setTimeout(check, 100);
+        });
+      } else {
+        // TTS unavailable — wait a readable duration before opening mic
+        await new Promise<void>((resolve) => setTimeout(resolve, 3000));
+      }
       startListening();
     };
 

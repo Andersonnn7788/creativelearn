@@ -8,6 +8,11 @@ interface SpeechRecognitionEvent {
   resultIndex: number;
 }
 
+interface ConversationOptions {
+  onNavigationIntent?: () => void;
+  systemPrompt?: ChatMessage;
+}
+
 // Detects when Venom's reply asks if the user is ready to begin
 const READY_QUESTION_PATTERN = /ready.{0,40}(experiment|begin|start)/i;
 
@@ -15,18 +20,64 @@ const READY_QUESTION_PATTERN = /ready.{0,40}(experiment|begin|start)/i;
 const AFFIRMATIVE_PATTERN = /\b(yes|yeah|yep|sure|ready|i'?m ready|let'?s go|absolutely|ok|okay|go|do it)\b/i;
 
 export function useConversation(
-  speak: (text: string) => Promise<void>,
+  speak: (text: string) => Promise<boolean>,
   isSpeakingRef: React.MutableRefObject<boolean>,
-  onNavigationIntent?: () => void
+  options: ConversationOptions = {}
 ) {
+  const { onNavigationIntent, systemPrompt } = options;
+
   const [status, setStatus] = useState<ConversationStatus>('idle');
   const [lastReply, setLastReply] = useState('');
-  const messagesRef = useRef<ChatMessage[]>([VENOM_SYSTEM_PROMPT]);
+  const messagesRef = useRef<ChatMessage[]>([systemPrompt || VENOM_SYSTEM_PROMPT]);
   const recognitionRef = useRef<any>(null);
   // Tracks whether Venom has asked the user if they're ready to begin
   const venomAskedReadyRef = useRef(false);
   // Tracks previous status to detect speaking → idle transitions
   const prevStatusRef = useRef<ConversationStatus>('idle');
+
+  // Update the system prompt (index 0) so the AI always has current context
+  const updateSystemPrompt = useCallback((prompt: ChatMessage) => {
+    messagesRef.current = [prompt, ...messagesRef.current.slice(1)];
+  }, []);
+
+  // Inject an assistant message (proactive commentary) — adds to history, speaks via TTS
+  const injectAssistantMessage = useCallback(
+    async (text: string) => {
+      // Add to history
+      messagesRef.current = [
+        ...messagesRef.current,
+        { role: 'assistant', content: text },
+      ];
+
+      setLastReply(text);
+      setStatus('speaking');
+
+      // Speak via TTS
+      const didSpeak = await speak(text);
+
+      if (didSpeak) {
+        // Wait for playback to finish
+        await new Promise<void>((resolve) => {
+          const check = () => {
+            if (!isSpeakingRef.current) {
+              resolve();
+            } else {
+              requestAnimationFrame(check);
+            }
+          };
+          setTimeout(check, 100);
+        });
+      } else {
+        // TTS unavailable — display text for a readable duration
+        await new Promise<void>((resolve) =>
+          setTimeout(resolve, Math.min(text.length * 60, 4000))
+        );
+      }
+
+      setStatus('idle');
+    },
+    [speak, isSpeakingRef]
+  );
 
   const processUserInput = useCallback(
     async (userText: string) => {
@@ -67,20 +118,27 @@ export function useConversation(
       setStatus('speaking');
 
       // Speak the reply via ElevenLabs TTS
-      await speak(reply);
+      const didSpeak = await speak(reply);
 
-      // Wait for TTS playback to finish
-      await new Promise<void>((resolve) => {
-        const check = () => {
-          if (!isSpeakingRef.current) {
-            resolve();
-          } else {
-            requestAnimationFrame(check);
-          }
-        };
-        // Small delay to let isSpeakingRef update
-        setTimeout(check, 100);
-      });
+      if (didSpeak) {
+        // Wait for TTS playback to finish
+        await new Promise<void>((resolve) => {
+          const check = () => {
+            if (!isSpeakingRef.current) {
+              resolve();
+            } else {
+              requestAnimationFrame(check);
+            }
+          };
+          // Small delay to let isSpeakingRef update
+          setTimeout(check, 100);
+        });
+      } else {
+        // TTS unavailable — display text for a readable duration
+        await new Promise<void>((resolve) =>
+          setTimeout(resolve, Math.min(reply.length * 60, 4000))
+        );
+      }
 
       setStatus('idle');
     },
@@ -160,5 +218,5 @@ export function useConversation(
     }
   }, [status, startListening]);
 
-  return { status, lastReply, startListening, stopListening };
+  return { status, lastReply, startListening, stopListening, updateSystemPrompt, injectAssistantMessage };
 }

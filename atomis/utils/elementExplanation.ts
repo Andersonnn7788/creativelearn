@@ -1,7 +1,7 @@
 import { ElementData } from '../types';
 
 /**
- * Calls OpenAI GPT-5 Mini API to generate an explanation about a newly created element/compound
+ * Calls OpenAI GPT-4o Mini API to generate an explanation about a newly created element/compound
  */
 declare const __OPENAI_API_KEY__: string | undefined;
 
@@ -33,7 +33,7 @@ Element details:
           'Authorization': `Bearer ${apiKey}`,
         },
         body: JSON.stringify({
-          model: 'gpt-5-mini',
+          model: 'gpt-4o-mini',
           messages: [{ role: 'user', content: prompt }],
           max_tokens: 200,
         }),

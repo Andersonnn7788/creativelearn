@@ -72,12 +72,12 @@ export function useVoice() {
   }, []);
 
   const speak = useCallback(
-    async (text: string) => {
+    async (text: string): Promise<boolean> => {
       // Cancel any in-progress playback
       stop();
 
       const audioBuffer = await textToSpeech(text);
-      if (!audioBuffer) return; // No API key or error — silent
+      if (!audioBuffer) return false; // No API key or error — silent
 
       try {
         const { ctx, analyser } = await ensureAudioCtx();
@@ -103,27 +103,33 @@ export function useVoice() {
           source.start();
         };
 
-        // If context is still suspended (no user gesture yet), defer playback
+        // If context is still suspended (no user gesture yet), wait for resume
         if (ctx.state === 'suspended') {
-          const handler = async () => {
-            document.removeEventListener('click', handler);
-            document.removeEventListener('pointerdown', handler);
-            try {
-              await ctx.resume();
-              playDecoded();
-            } catch (e) {
-              console.error('Failed to resume AudioContext on user gesture:', e);
-            }
-          };
-          document.addEventListener('click', handler, { once: true });
-          document.addEventListener('pointerdown', handler, { once: true });
+          await new Promise<void>((resolve, reject) => {
+            const handler = async () => {
+              document.removeEventListener('click', handler);
+              document.removeEventListener('pointerdown', handler);
+              try {
+                await ctx.resume();
+                resolve();
+              } catch (e) {
+                reject(e);
+              }
+            };
+            document.addEventListener('click', handler, { once: true });
+            document.addEventListener('pointerdown', handler, { once: true });
+          });
+          playDecoded();
         } else {
           playDecoded();
         }
+
+        return true;
       } catch (e) {
         console.error('useVoice.speak() failed:', e);
         isSpeakingRef.current = false;
         audioLevelRef.current = 0;
+        return false;
       }
     },
     [stop, ensureAudioCtx, startLevelLoop]
