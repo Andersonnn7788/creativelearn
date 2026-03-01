@@ -61,7 +61,7 @@ cp .env.example .env
 |----------|-------------|----------|
 | `VITE_OPENAI_API_KEY` | OpenAI API key for element explanations and conversational Venom assistant | Yes |
 | `VITE_ELEVENLABS_API_KEY` | ElevenLabs API key for voice synthesis | No |
-| `VITE_ELEVENLABS_VOICE_ID` | ElevenLabs voice ID (default: Adam) | No |
+| `VITE_ELEVENLABS_VOICE_ID` | ElevenLabs voice ID | No |
 
 ### Run
 
