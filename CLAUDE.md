@@ -9,7 +9,6 @@ cd atomis
 npm run dev      # Start dev server (port 3000)
 npm run build    # Production build
 npm run preview  # Preview production build
-npx convex dev   # Start Convex backend (separate terminal)
 ```
 
 No lint or test scripts are configured.
@@ -19,16 +18,16 @@ No lint or test scripts are configured.
 Create `atomis/.env` (see `atomis/.env.example`):
 
 ```
-CONVEX_DEPLOYMENT=<your-convex-deployment>
-VITE_CONVEX_URL=<your-convex-url>
-VITE_GEMINI_API_KEY=<your-gemini-api-key>
+VITE_OPENAI_API_KEY=<your-openai-api-key>
+VITE_ELEVENLABS_API_KEY=<your-elevenlabs-api-key>
+VITE_ELEVENLABS_VOICE_ID=<your-elevenlabs-voice-id>
 ```
 
-`vite.config.ts` also reads `GEMINI_API_KEY` as a non-VITE fallback.
+`vite.config.ts` also reads `OPENAI_API_KEY` and `ELEVENLABS_API_KEY` as non-VITE fallbacks.
 
 ## Architecture
 
-**Stack**: React 19 + TypeScript + Vite | Three.js via React Three Fiber | MediaPipe hand tracking | Convex backend | Gemini AI (`gemini-pro`)
+**Stack**: React 19 + TypeScript + Vite | Three.js via React Three Fiber | MediaPipe hand tracking | OpenAI GPT-4o Mini | ElevenLabs voice synthesis
 
 **Path alias**: `@` → `atomis/`
 
@@ -39,7 +38,7 @@ VITE_GEMINI_API_KEY=<your-gemini-api-key>
 | `/` | `LandingPage` | Animated intro with 3D particle background |
 | `/play` | `App` | Main chemistry lab experience |
 
-Entry point wraps everything in `<ConvexProvider>`.
+Entry point wraps routes in `<BrowserRouter>`.
 
 ### Key Architectural Patterns
 
@@ -48,7 +47,7 @@ Entry point wraps everything in `<ConvexProvider>`.
 - **Custom GLSL shaders**: All shaders are inline template literals in `.tsx` files (no `.glsl` files). Found in `Scene.tsx`, `ParticleSphere.tsx`, `WaterSimulation.tsx`, `LandingPage.tsx`.
 - **Gesture recognition pipeline**: `HandTracker` → `gestureRecognition` service → `TrackingData` → `App.tsx` state → child components.
 - **Hit testing**: Hand index-finger screen position mapped to DOM elements with class `.interactable-btn` for gesture-based UI interaction.
-- **LocalStorage persistence**: Uses keys `chemLabHistory`, `labSlots`, `labCreatedSlots` (Convex backend is set up but not wired to UI).
+- **LocalStorage persistence**: Uses keys `chemLabHistory`, `labSlots`, `labCreatedSlots`.
 
 ### Data Flow
 
@@ -59,7 +58,7 @@ HandTracker (MediaPipe camera loop)
       ├── Scene (3D rendering: ParticleSphere, WaterSimulation, SaltSimulation, shaders)
       ├── UIOverlay (HUD, catalyst buttons, shelf, cursor, death screen)
       ├── Dashboard (element collection, slot selection, quiz mode)
-      └── MascotGuide + MascotAvatar (AI explanations via Gemini, 3D robot head)
+      └── MascotGuide + MascotAvatar (AI explanations via OpenAI, 3D robot head)
 ```
 
 ### Key Files
@@ -67,7 +66,7 @@ HandTracker (MediaPipe camera loop)
 | File | Purpose |
 |------|---------|
 | `atomis/App.tsx` | Central state, gesture handling, combination logic |
-| `atomis/index.tsx` | Router + ConvexProvider entry point |
+| `atomis/index.tsx` | Router entry point |
 | `atomis/types.ts` | All TypeScript interfaces (`ElementData`, `TrackingData`, `HandGestureState`, etc.) |
 | `atomis/constants.ts` | `ELEMENTS` array (10), `COMBINATIONS` array (15), `GESTURE_COOLDOWN` |
 | `atomis/components/HandTracker.tsx` | MediaPipe HandLandmarker setup + camera frame loop |
@@ -78,8 +77,15 @@ HandTracker (MediaPipe camera loop)
 | `atomis/components/SaltSimulation.tsx` | NaCl pile + lattice visualization |
 | `atomis/components/UIOverlay.tsx` | HUD, catalyst buttons, shelf, cursor overlay |
 | `atomis/components/Dashboard.tsx` | Element collection, lab slots, quiz mode |
-| `atomis/utils/gemini.ts` | Gemini API calls for element explanations |
-| `atomis/convex/schema.ts` | Convex DB schema (`savedElements` table) |
+| `atomis/utils/elementExplanation.ts` | OpenAI API calls for element explanations |
+| `atomis/utils/chat.ts` | Chat functionality |
+| `atomis/utils/labPrompt.ts` | Lab assistant prompt configuration |
+| `atomis/utils/tts.ts` | ElevenLabs text-to-speech |
+| `atomis/hooks/useVoice.ts` | Voice synthesis with audio analysis |
+| `atomis/hooks/useConversation.ts` | Conversation state management |
+| `atomis/hooks/useLabConversation.ts` | Lab-specific conversation logic |
+| `atomis/components/AtomLabel.tsx` | Element label UI |
+| `atomis/components/SymbioteBlob.tsx` | 3D animated assistant character |
 
 ### Gestures
 

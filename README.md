@@ -2,7 +2,7 @@
 
 **Interactive 3D Chemistry Learning Platform with Hand Tracking**
 
-Atomis is a browser-based chemistry lab where you mix elements using hand gestures tracked through your webcam. Combine 10 base elements into 15 compounds, explore 3D particle visualizations, and learn chemistry with an AI-powered lab assistant — all without touching your keyboard.
+Atomis is a browser-based chemistry lab where you mix elements using hand gestures tracked through your webcam. Combine 10 base elements into 15 compounds, explore 3D particle visualizations, and learn chemistry with "Venom" — an AI-powered lab assistant with voice synthesis — all without touching your keyboard.
 
 ![React](https://img.shields.io/badge/React-19-blue)
 ![Three.js](https://img.shields.io/badge/Three.js-R181-black)
@@ -14,7 +14,7 @@ Atomis is a browser-based chemistry lab where you mix elements using hand gestur
 - **Hand Gesture Controls** — Pinch to scale, clap to fuse, point to interact with UI, fist to save compounds, circular motion to reset
 - **3D Particle Visualizations** — Custom GLSL shaders render element particles with core, shell, and orbital ring systems
 - **Element Fusion** — Combine elements with optional catalysts (heat, light, chemical) to create compounds
-- **AI Lab Assistant** — "Atom" explains your creations using OpenAI gpt-5-mini with ElevenLabs voice synthesis
+- **AI Lab Assistant** — "Venom" explains your creations using OpenAI GPT-4o Mini with ElevenLabs voice synthesis
 - **Interactive Simulations** — Hand-reactive water shader and NaCl crystal lattice visualization
 - **Quiz Mode** — Test your knowledge of elements and compounds
 - **Death Mechanics** — Dangerous combinations trigger game-over states with explanations
@@ -27,9 +27,8 @@ Atomis is a browser-based chemistry lab where you mix elements using hand gestur
 | Frontend | React 19, TypeScript, Vite |
 | 3D Rendering | Three.js via React Three Fiber |
 | Hand Tracking | MediaPipe Tasks Vision |
-| AI Assistant | OpenAI (gpt-5-mini) |
+| AI Assistant | OpenAI (GPT-4o Mini) |
 | Voice Synthesis | ElevenLabs API |
-| Backend | Convex (schema defined, not yet wired to UI) |
 | Routing | React Router v6 |
 | Persistence | LocalStorage (`chemLabHistory`, `labSlots`, `labCreatedSlots`) |
 
@@ -60,7 +59,7 @@ cp .env.example .env
 
 | Variable | Description | Required |
 |----------|-------------|----------|
-| `VITE_OPENAI_API_KEY` | OpenAI API key for the AI lab assistant | Yes |
+| `VITE_OPENAI_API_KEY` | OpenAI API key for element explanations and conversational Venom assistant | Yes |
 | `VITE_ELEVENLABS_API_KEY` | ElevenLabs API key for voice synthesis | No |
 | `VITE_ELEVENLABS_VOICE_ID` | ElevenLabs voice ID (default: Adam) | No |
 
@@ -71,7 +70,7 @@ cd atomis
 npm run dev
 ```
 
-Open [http://localhost:5173](http://localhost:5173) and allow camera access when prompted.
+Open [http://localhost:3000](http://localhost:3000) and allow camera access when prompted.
 
 ## Project Structure
 
@@ -79,7 +78,7 @@ Open [http://localhost:5173](http://localhost:5173) and allow camera access when
 atomis/
 ├── App.tsx                  # Central state management & combination logic
 ├── LandingPage.tsx          # Animated intro with 3D particle background
-├── index.tsx                # Router + ConvexProvider entry point
+├── index.tsx                # Router entry point
 ├── types.ts                 # TypeScript interfaces
 ├── constants.ts             # Elements, combinations, gesture config
 ├── components/
@@ -97,13 +96,15 @@ atomis/
 ├── services/
 │   └── gestureRecognition.ts  # Gesture analysis pipeline
 ├── utils/
-│   ├── gemini.ts            # OpenAI API integration
+│   ├── elementExplanation.ts  # OpenAI API integration for element explanations
+│   ├── chat.ts              # Chat functionality
+│   ├── labPrompt.ts         # Lab assistant prompt configuration
 │   ├── mascot.ts            # Pre-written facts & system messages
-│   ├── tts.ts               # ElevenLabs text-to-speech
-│   └── chat.ts              # Chat functionality
+│   └── tts.ts               # ElevenLabs text-to-speech
 ├── hooks/
 │   ├── useVoice.ts          # Voice synthesis with audio analysis
-│   └── useConversation.ts   # Conversation state management
+│   ├── useConversation.ts   # Conversation state management
+│   └── useLabConversation.ts  # Lab-specific conversation logic
 └── assets/                  # Sounds, images
 ```
 
