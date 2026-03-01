@@ -1,0 +1,7 @@
+{
+  "name": "ChemiParticles 3D",
+  "description": "Interactive real-time hand-tracked periodic table particle system.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
