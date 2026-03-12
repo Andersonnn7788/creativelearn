@@ -179,9 +179,9 @@ const UIOverlay: React.FC<UIOverlayProps> = ({
       }
       
       if (context === 'system') {
-          if (len > 4) return "text-4xl";
-          if (len > 2) return "text-5xl";
-          return "text-6xl";
+          if (len > 4) return "text-3xl";
+          if (len > 2) return "text-4xl";
+          return "text-5xl";
       }
       
       if (context === 'center') {
@@ -406,7 +406,7 @@ const UIOverlay: React.FC<UIOverlayProps> = ({
         <div className="w-full pt-4 px-6 flex flex-row justify-between items-start pointer-events-auto relative z-20">
           {/* LEFT HAND SYSTEM */}
           <div
-            className={`text-left transition-all duration-500 ${combinedElement ? "opacity-0 translate-y-10" : "opacity-100"}`}
+            className={`text-left shrink-0 transition-all duration-500 ${combinedElement ? "opacity-0 translate-y-10" : "opacity-100"}`}
           >
             <div className="text-[10px] text-cyan-400 mb-2 font-mono tracking-[0.2em] border-b border-cyan-900 pb-1 inline-block">
               SYSTEM: LEFT HAND
@@ -420,7 +420,7 @@ const UIOverlay: React.FC<UIOverlayProps> = ({
           </div>
 
           {/* CENTER: LAB SHELF */}
-          <div className="flex-1 overflow-visible px-4 flex justify-center max-w-4xl">
+          <div className="flex-1 min-w-0 overflow-visible px-4 flex justify-center max-w-4xl">
             <div className="w-full overflow-x-visible pb-4 no-scrollbar flex justify-center">
               {displayElements.length > 0 ? (
                 <div className="flex gap-4 px-4 min-w-max justify-center items-center">
@@ -485,7 +485,7 @@ const UIOverlay: React.FC<UIOverlayProps> = ({
 
           {/* RIGHT HAND SYSTEM */}
           <div
-            className={`text-right transition-all duration-500 ${combinedElement ? "opacity-0 translate-y-10" : "opacity-100"}`}
+            className={`text-right shrink-0 transition-all duration-500 ${combinedElement ? "opacity-0 translate-y-10" : "opacity-100"}`}
           >
             <div className="text-[10px] text-purple-400 mb-2 font-mono tracking-[0.2em] border-b border-purple-900 pb-1 inline-block">
               SYSTEM: RIGHT HAND
@@ -578,7 +578,7 @@ const UIOverlay: React.FC<UIOverlayProps> = ({
           )}
 
           {/* Futuristic Status Ticker - MOVED UP */}
-          <div className="absolute bottom-44 left-1/2 transform -translate-x-1/2 text-center w-full pointer-events-none">
+          <div className="absolute bottom-44 left-1/2 transform -translate-x-1/2 text-center w-full pointer-events-none z-30">
             <div className="relative inline-block overflow-hidden rounded-md group">
               {/* High-Tech Clip Path Border */}
               <div

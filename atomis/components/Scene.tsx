@@ -735,7 +735,8 @@ const SceneContent: React.FC<SceneProps> = ({ leftElement, rightElement, combine
     if (leftGroupRef.current) {
         let targetPos = new THREE.Vector3(0,0,0);
         if (combinedElement) targetPos.set(0, 0, 0);
-        else targetPos.set(mapX(data.left.position.x), mapY(data.left.position.y), 0);
+        else if (data.left.isPresent) targetPos.set(mapX(data.left.position.x), mapY(data.left.position.y), 0);
+        else targetPos.set(-5, 0, 0);
         leftGroupRef.current.position.lerp(targetPos, 0.12);
         const dx = data.left.position.x - lastLeftPos.current.x;
         if (!combinedElement) {
@@ -749,7 +750,8 @@ const SceneContent: React.FC<SceneProps> = ({ leftElement, rightElement, combine
     if (rightGroupRef.current) {
         let targetPos = new THREE.Vector3(0,0,0);
         if (combinedElement) targetPos.set(0, 0, 0);
-        else targetPos.set(mapX(data.right.position.x), mapY(data.right.position.y), 0);
+        else if (data.right.isPresent) targetPos.set(mapX(data.right.position.x), mapY(data.right.position.y), 0);
+        else targetPos.set(5, 0, 0);
         rightGroupRef.current.position.lerp(targetPos, 0.12);
         const dx = data.right.position.x - lastRightPos.current.x;
         if (!combinedElement) {

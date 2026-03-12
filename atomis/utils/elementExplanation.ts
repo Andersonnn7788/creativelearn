@@ -1,19 +1,10 @@
 import { ElementData } from '../types';
 
 /**
- * Calls OpenAI GPT-4o Mini API to generate an explanation about a newly created element/compound
+ * Calls OpenAI GPT-4o Mini (via /api/chat proxy) to explain a newly created element/compound
  */
-declare const __OPENAI_API_KEY__: string | undefined;
 
 export async function getElementExplanation(element: ElementData): Promise<string> {
-  const apiKey = (import.meta.env.VITE_OPENAI_API_KEY as string | undefined) ||
-                 (typeof __OPENAI_API_KEY__ !== 'undefined' ? __OPENAI_API_KEY__ : undefined);
-
-  if (!apiKey) {
-    console.warn('OpenAI API key not found, using fallback explanation');
-    return getFallbackExplanation(element);
-  }
-
   try {
     const prompt = `You are a friendly chemistry lab assistant named Atom. A student just created ${element.name} (${element.symbol}) by mixing elements in a chemistry lab simulation.
 
@@ -24,24 +15,17 @@ Element details:
 - Symbol: ${element.symbol}
 - Description: ${element.description || 'N/A'}`;
 
-    const response = await fetch(
-      'https://api.openai.com/v1/chat/completions',
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`,
-        },
-        body: JSON.stringify({
-          model: 'gpt-4o-mini',
-          messages: [{ role: 'user', content: prompt }],
-          max_tokens: 200,
-        }),
-      }
-    );
+    const response = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        messages: [{ role: 'user', content: prompt }],
+        max_tokens: 200,
+      }),
+    });
 
     if (!response.ok) {
-      throw new Error(`OpenAI API error: ${response.status}`);
+      throw new Error(`Chat API error: ${response.status}`);
     }
 
     const data = await response.json();
@@ -53,7 +37,7 @@ Element details:
 
     return getFallbackExplanation(element);
   } catch (error) {
-    console.error('Error calling OpenAI API:', error);
+    console.error('Error calling chat API:', error);
     return getFallbackExplanation(element);
   }
 }

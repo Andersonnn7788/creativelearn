@@ -1,8 +1,6 @@
 /**
- * Multi-turn conversational chat via OpenAI GPT-4o Mini
+ * Multi-turn conversational chat via OpenAI GPT-4o Mini (proxied through /api/chat)
  */
-
-declare const __OPENAI_API_KEY__: string | undefined;
 
 export interface ChatMessage {
   role: 'system' | 'user' | 'assistant';
@@ -15,33 +13,17 @@ export const VENOM_SYSTEM_PROMPT: ChatMessage = {
 };
 
 export async function chatWithVenom(messages: ChatMessage[]): Promise<string> {
-  const apiKey =
-    (import.meta.env.VITE_OPENAI_API_KEY as string | undefined) ||
-    (typeof __OPENAI_API_KEY__ !== 'undefined' ? __OPENAI_API_KEY__ : undefined);
-
-  if (!apiKey) {
-    console.warn('OpenAI API key not found — chat disabled');
-    return "Hmm, my neural link is offline. Check the API key and try again!";
-  }
-
   try {
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    const response = await fetch('/api/chat', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages,
-        max_tokens: 80,
-      }),
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ messages, max_tokens: 80 }),
     });
 
     if (!response.ok) {
       const errorBody = await response.text();
-      console.error('OpenAI API response:', response.status, errorBody);
-      throw new Error(`OpenAI API error: ${response.status}`);
+      console.error('Chat API response:', response.status, errorBody);
+      throw new Error(`Chat API error: ${response.status}`);
     }
 
     const data = await response.json();
@@ -53,7 +35,7 @@ export async function chatWithVenom(messages: ChatMessage[]): Promise<string> {
 
     return "Something went wrong with my thought process. Try asking again!";
   } catch (error) {
-    console.error('Error calling OpenAI chat:', error);
+    console.error('Error calling chat API:', error);
     return "My connection glitched out. Give it another shot!";
   }
 }

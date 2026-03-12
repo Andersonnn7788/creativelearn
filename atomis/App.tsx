@@ -187,8 +187,8 @@ const App: React.FC = () => {
   const lastInteractionTime = useRef(0);
 
   const trackingDataRef = useRef<TrackingData>({
-    left: { pinchDistance: 0.5, isPinching: false, isPointing: false, position: {x: 0, y: 0, z: 0}, indexPosition: {x: 0, y: 0, z: 0}, isPresent: false },
-    right: { pinchDistance: 0.5, isPinching: false, isPointing: false, position: {x: 0, y: 0, z: 0}, indexPosition: {x: 0, y: 0, z: 0}, isPresent: false },
+    left: { pinchDistance: 0.5, isPinching: false, isPointing: false, position: {x: 0.25, y: 0.5, z: 0}, indexPosition: {x: 0, y: 0, z: 0}, isPresent: false },
+    right: { pinchDistance: 0.5, isPinching: false, isPointing: false, position: {x: 0.75, y: 0.5, z: 0}, indexPosition: {x: 0, y: 0, z: 0}, isPresent: false },
     isClapping: false,
     isResetGesture: false,
     isClosedFist: false,
